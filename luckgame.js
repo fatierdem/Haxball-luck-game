@@ -316,13 +316,13 @@ let specList = [];
 let redPlayer = null;
 let jailPlayer = null;
 let jPCheck = false;
-let krayir;
 let idToName = "";
 let idToAuth = new Map();
 let choose = false;
 let interval;
 let bool = null
 let activites = new Map();
+let ADMIN;
 
 function chooseName() {
     let playerList = room.getPlayerList();
@@ -331,7 +331,7 @@ function chooseName() {
         idToName=idToName+playerList[i].name +"  :  "+playerList[i].id+"  ";
     }
 
-    room.sendAnnouncement(redPlayer.name+" SEÇECEĞİN KİŞİNİN İD NUMARASINI YAZ",null,0Xfe2000,"bold",null);
+    room.sendAnnouncement(redPlayer.name+" 🎲 SEÇECEĞİN KİŞİNİN İD NUMARASINI YAZ",null,0Xfe2000,"bold",null);
     room.sendAnnouncement(idToName,null,0Xedffdb,"bold",null);
 
     let count = 0;
@@ -352,20 +352,21 @@ function chooseName() {
 
 function startAgain() {
     room.stopGame();
-    setTimeout(() => {listPlayers();}, 1000);
     setTimeout(() => {
-        players = room.getPlayerList();
-        if(players.length<3){return;}
-        if(redPlayer != null){room.setPlayerTeam(redPlayer.id,0);}
-    }, 1200);
-    setTimeout(() => {
-        players = room.getPlayerList();
-        if(players.length<3){return;} 
-        room.setPlayerTeam(specList[0].id,1);
-    }, 1500);
-    setTimeout(() => {  
+        listPlayers();
+        let players = room.getPlayerList();
+        if(players.length<3) return;
+        
+        if(redPlayer != null) {
+            room.setPlayerTeam(redPlayer.id, 0);
+        }
+        
+        if(specList.length > 0) {
+            room.setPlayerTeam(specList[0].id, 1);
+        }
+        
         room.startGame();
-    }, 1700);
+    }, 1500);
 }
 
 function checkCoordinates(x,y,a,b,d,e) {
@@ -376,19 +377,21 @@ function checkCoordinates(x,y,a,b,d,e) {
 }
 
 function listPlayers() {
-    redPlayer = null;
-    jailPlayer = null;
-    specList = [];
-    let players = room.getPlayerList();
-    for (let i = 0; i < players.length; i++) {
-        if (players[i].team==0) {
-            specList.push(players[i]);
-        }else if(players[i].team==1){
-            redPlayer = players[i];
-        }else{
-            jailPlayer = players[i];
-        }
+    playerList = room.getPlayerList();
+    specList = playerList.filter((player) => player.team === 0);
+    redList = playerList.filter((player) => player.team === 1);
+    blueList = playerList.filter((player) => player.team === 2);
     
+    if(redList.length > 0) {
+        redPlayer = redList[0];
+    } else {
+        redPlayer = null;
+    }
+    
+    if(blueList.length > 0) {
+        jailPlayer = blueList[0];
+    } else {
+        jailPlayer = null;
     }
 }
 
@@ -401,7 +404,7 @@ function removeMute(id) {
 }
 
 setTimeout(() => {
-    room.sendAnnouncement("Banlar temizlendi.",null,0Xfe2000,"bold",null);
+    room.sendAnnouncement("🧹 Banlar temizlendi.",null,0Xfe2000,"bold",null);
     console.log("Banlar temizlendi.");
     room.clearBans();    
 }, 5*60*1000);
@@ -416,11 +419,6 @@ let gameCount = 0;
 let bugCount = 0;
 
 room.onGameTick = function(){
-    // for(const[key,value] of activites){
-    //     if(Date.now()-10000 > value){
-    //         room.kickPlayer(key,null,false);
-    //     }    
-    // }
     
     if (gameCount==1050) {
         gameCount = 0;
@@ -566,14 +564,14 @@ room.onPlayerJoin = function(player){
         room.sendAnnouncement(idToName,null,0Xedffdb,"bold",null);
     }
     if(player.id==1){
-        krayir = player;
+        ADMIN = player;
     }
     if(blackList.includes(player.auth)){
         room.kickPlayer(player.id,null,true);
         return
     }
     for (let i = 0; i < playerList.length; i++) {
-        if(player.auth==idToAuth.get(playerList[i].id)&&player.auth!=krayir.auth&&player.id!=playerList[i].id){
+        if(player.auth==idToAuth.get(playerList[i].id)&&player.auth!=ADMIN.auth&&player.id!=playerList[i].id){
             room.kickPlayer(player.id,"Yan sekmeden girmeye çalışan biri var!! "+playerList[i].name,false);
         }    else if(player.id!=playerList[i].id&&player.name.toLowerCase()==playerList[i].name.toLowerCase()) {
             room.kickPlayer(player.id,"Aynı isimde başka birisi var",false);
@@ -581,40 +579,63 @@ room.onPlayerJoin = function(player){
     }
     listPlayers();
     if(playerList.length<3){
-        room.sendAnnouncement("OYUNCU SAYISI 3 OLDUĞUNDA OYUN BAŞLAYACAK",null,0X94FFAA,"bold",null);
+        room.sendAnnouncement("👥 OYUNCU SAYISI 3 OLDUĞUNDA OYUN BAŞLAYACAK 👥",null,0X94FFAA,"bold",null);
     }else if(playerList.length==3){
         room.setPlayerTeam(specList[0].id,1);
         room.startGame();
     }
-    room.sendAnnouncement("Oyun bilgisi için !bilgi komutunu kullanın.",null,0X003cfe,"bold",null);
+    room.sendAnnouncement("ℹ️ Oyun bilgisi için !bilgi komutunu kullanın.",null,0X003cfe,"bold",null);
     room.setPlayerAdmin(1,true);
 }
 
 room.onPlayerLeave = function(player){
-    console.log(player.name+" Oyuncu çıktı")
+    console.log(player.name+" Oyuncu çıktı");
+
+    let wasRedPlayer = (redPlayer && player.id == redPlayer.id);
+    let wasJailPlayer = (jailPlayer && player.id == jailPlayer.id);
+    
     playerList = room.getPlayerList();
     listPlayers();
+    
     if (choose == true) {
         idToName = "";
         for (let i = 0; i < playerList.length; i++) {
-            idToName=idToName+playerList[i].name +"  :  "+playerList[i].id+"  ";
+            idToName += playerList[i].name +"  :  "+playerList[i].id+"  ";
         }
         room.sendAnnouncement(idToName,null,0Xedffdb,"bold",null);
     }
     
-    if (playerList.length<=2) {
+    if (playerList.length <= 2) {
         room.sendAnnouncement("OYUNCU SAYISI 3 OLDUĞUNDA OYUN BAŞLAYACAK",null,0X94FFAA,"bold",null);
         room.stopGame();
         for (let i = 0; i < playerList.length; i++) {
             room.setPlayerTeam(playerList[i].id,0);
         }
-    }else if(redPlayer.id!=null&&player.id == redPlayer.id){
-        room.stopGame();
-        room.setPlayerTeam(specList[0].id,1);
-        room.startGame();
-    }else if(jailPlayer!=null&&player.id == jailPlayer.id){
+        redPlayer = null;
         jailPlayer = null;
-        if(jPCheck == false){blackList.push(idToAuth.get(player.id))};
+    } else if(wasRedPlayer) {
+        console.log("Kırmızı oyuncu çıktı, oyun tekrar başlayacak");
+        redPlayer = null;
+        room.stopGame();
+        
+        setTimeout(() => {
+            if(specList && specList.length > 0) {
+                room.setPlayerTeam(specList[0].id, 1);
+                setTimeout(() => {
+                    room.startGame();
+                }, 200);
+            }
+        }, 300);
+    } else if(wasJailPlayer) {
+        console.log(player.name + " hapisteyken çıktı!");
+        jailPlayer = null;
+        if(!jPCheck) {
+            let playerAuth = idToAuth.get(player.id);
+            if(playerAuth && !blackList.includes(playerAuth)) {
+                blackList.push(playerAuth);
+                console.log(player.name + " kara listeye eklendi: " + playerAuth);
+            }
+        }
         jPCheck = false;
     }
 }
@@ -639,7 +660,7 @@ room.onGameStart = function(){
 }
 
 room.onPlayerTeamChange = function(player,byplayer) {
-    if (byplayer!=null&&idToAuth.get(byplayer.id)!=krayir.auth) {
+    if (byplayer!=null&&idToAuth.get(byplayer.id)!=ADMIN.auth) {
         console.log(byplayer.name+ "Birinin takımını değiştirdi");
         room.kickPlayer(byplayer.id,null,true);
         blackList.push(idToAuth.get(byplayer.id));
@@ -654,7 +675,7 @@ room.onPlayerTeamChange = function(player,byplayer) {
     
     if(player.team == 2){
         console.log(player.name+" Mavi takıma geçti.");
-        room.sendAnnouncement("HAPİSTESİN! "+player.name,null,0XFF0000,"bold",null);
+        room.sendAnnouncement("🔒 HAPİSTESİN! "+player.name,null,0XFF0000,"bold",null);
     }else if(player.team==1){
         redPlayer = player;
         console.log(player.name+" Kırmızı takıma geçti.");
@@ -664,43 +685,58 @@ room.onPlayerTeamChange = function(player,byplayer) {
 }
 
 room.onPlayerChat = function (player,message) {
+    if(!player) return false;
+    
     console.log(player.name+` (${player.id}): `+message);
-    if(choose == true){
-        playerList = room.getPlayerList();
-        console.log(player.name+` (${player.id}): `+message);
-        if (player.team != 1) {
-            return false;
-        }
-
-        for (let i = 0; i < playerList.length; i++) {
-            if (playerList[i].id == message) {
-                choose=false;
-                if(bool!=null){
-                    room.kickPlayer(message,null,bool);
-                    setTimeout(() => {
-                        let newList  = room.getPlayerList();
-                        if(newList.length<3){
-                            room.stopGame();return;
-                        }
-                        startAgain();return;
-                    }, 250);
-                }else{
-                    if(jailPlayer == null){
-                        room.setPlayerTeam(message,2);
-                        setTimeout(() => {
-                            startAgain();return;                    
-                        }, 1000);
-                    }
-                    room.setPlayerTeam(jailPlayer.id,0);
-                    room.setPlayerTeam(message,2);
-                    setTimeout(() => {
-                        startAgain();return;                    
-                    }, 1000);
-                }
-            }
-        }
+    
+    if(message.toLowerCase() == "!bilgi"){
+        room.sendAnnouncement("🎮 OYUN KOMUTLARI:",player.id,0X70ff70,"bold",null);
+        room.sendAnnouncement("✅ OK = Hapisteki kişiyi kickler",player.id,0Xedffdb,"bold",null);
+        room.sendAnnouncement("🎯 SK = Seçtiğin kişiyi kickler",player.id,0Xedffdb,"bold",null);
+        room.sendAnnouncement("⛔ SB = Seçtiğin kişiyi banlar",player.id,0Xedffdb,"bold",null);
+        room.sendAnnouncement("👢 KN = Sıradaki kişiyi kickler",player.id,0Xedffdb,"bold",null);
+        room.sendAnnouncement("🔒 JN = Sıradaki kişiyi hapse atar",player.id,0Xedffdb,"bold",null);
+        room.sendAnnouncement("🚫 BN = Sıradaki kişiyi banlar",player.id,0Xedffdb,"bold",null);
+        room.sendAnnouncement("🏢 J = Hapse girersin",player.id,0Xedffdb,"bold",null);
+        room.sendAnnouncement("🔄 R = Tekrar",player.id,0Xedffdb,"bold",null);
+        room.sendAnnouncement("➡️ Pas = Pas",player.id,0Xedffdb,"bold",null);
+        return false;
     }
-    if (idToAuth.get(player.id) == krayir.auth) {
+    
+    if(choose == true) {
+        let playerList = room.getPlayerList();
+        if(player.team != 1) return false;
+        
+        let messageId = parseInt(message);
+        if(isNaN(messageId)) return false;
+        
+        let targetPlayer = playerList.find(p => p.id == messageId);
+        if(!targetPlayer) return false;
+        
+        choose = false;
+        if(bool != null) {
+            room.kickPlayer(messageId, null, bool);
+            setTimeout(() => {
+                let newList = room.getPlayerList();
+                if(newList.length < 3) {
+                    room.stopGame();
+                    return;
+                }
+                startAgain();
+            }, 250);
+        } else {
+            if(jailPlayer == null) {
+                room.setPlayerTeam(messageId, 2);
+            } else {
+                room.setPlayerTeam(jailPlayer.id, 0);
+                room.setPlayerTeam(messageId, 2);
+            }
+            setTimeout(startAgain, 1000);
+        }
+        return false;
+    }
+    
+    if (idToAuth.get(player.id) == ADMIN.auth) {
         if(message.startsWith("!b")){
             message = message.split(" ");
             room.kickPlayer(message[1],null,true);
@@ -726,35 +762,24 @@ room.onPlayerChat = function (player,message) {
                 idToName=idToName+playerList[i].name +"  :  "+playerList[i].id+"  ";
             }
             room.sendAnnouncement(idToName,player.id,0Xedffdb,"bold",null);
-            idToName="";return false;
-        }        
+            idToName="";
+            return false;
+        }
     }
 
-    if(message.toLowerCase() == "!bilgi"){
-        room.sendAnnouncement("OK = Hapisteki kişiyi kickler",player.id,0Xedffdb,"bold",null);
-        room.sendAnnouncement("SK = Seçtiğin kişiyi kickler",player.id,0Xedffdb,"bold",null);
-        room.sendAnnouncement("SB = Seçtiğin kişiyi banlar",player.id,0Xedffdb,"bold",null);
-        room.sendAnnouncement("KN = Sıradaki kişiyi kickler",player.id,0Xedffdb,"bold",null);
-        room.sendAnnouncement("JN = Sıradaki kişiyi hapse atar",player.id,0Xedffdb,"bold",null);
-        room.sendAnnouncement("BN = Sıradaki kişiyi banlar",player.id,0Xedffdb,"bold",null);
-        room.sendAnnouncement("J = Hapse girersin",player.id,0Xedffdb,"bold",null);
-        room.sendAnnouncement("R = Tekrar",player.id,0Xedffdb,"bold",null);
-        room.sendAnnouncement("Pas = Pas",player.id,0Xedffdb,"bold",null);
-    }
-
-    room.sendAnnouncement(`[${player.id}] `+player.name+': '+message,null,null,null,null);
+    room.sendAnnouncement(`💬 [${player.id}] `+player.name+': '+message,null,null,null,null);
     return false;
 } 
 
 room.onStadiumChange = function (stad,player) {
-    if (player!=null&&idToAuth.get(player.id)!=krayir.auth) {
+    if (player!=null&&idToAuth.get(player.id)!=ADMIN.auth) {
         console.log(player.name+ " Stadyumu değiştirdi");
         room.kickPlayer(player.id,null,true);blackList.push(idToAuth.get(player.id));
         room.setCustomStadium(map);
     }
 }
 room.onGamePause = function (player) {
-    if (player!=null&&idToAuth.get(player.id)!=krayir.auth) {
+    if (player!=null&&idToAuth.get(player.id)!=ADMIN.auth) {
         console.log(player.name+ " Oyunu duraklattı.");
         room.kickPlayer(player.id,null,true);blackList.push(idToAuth.get(player.id));
         room.pauseGame(false);
@@ -762,14 +787,14 @@ room.onGamePause = function (player) {
 }
 room.onPlayerKicked = function (kickedp,reason,ban,player) {
     if(kickedp == jailPlayer){jPCheck = true;}
-    if (player!=null&&idToAuth.get(player.id)!=krayir.auth) {
+    if (player!=null&&idToAuth.get(player.id)!=ADMIN.auth) {
         console.log(player.name+ " Oyuncuyu kickledi. "+ban);
         room.kickPlayer(player.id,null,true);blackList.push(idToAuth.get(player.id));
         room.clearBan(kickedp.id);
     }else{console.log(kickedp.name+" Oyuncu kicklendi "+ban);}
 }
 room.onPlayerAdminChange = function (changedp,player) {
-    if (player!=null&&idToAuth.get(player.id)!=krayir.auth) {
+    if (player!=null&&idToAuth.get(player.id)!=ADMIN.auth) {
         console.log(player.name+ " Birini admin yaptı.");
         room.kickPlayer(player.id,null,true);blackList.push(idToAuth.get(player.id));
         room.setPlayerAdmin(changedp.id,false);
@@ -778,7 +803,7 @@ room.onPlayerAdminChange = function (changedp,player) {
 room.onGameStop = function (player) {
     choose = false;bool=null;idToName="";bugCount=0;
     clearInterval(interval);
-    if (player!=null&&idToAuth.get(player.id)!=krayir.auth) {
+    if (player!=null&&idToAuth.get(player.id)!=ADMIN.auth) {
         console.log(player.name+ " Oyunu durdurdu");
         room.kickPlayer(player.id,null,true);blackList.push(idToAuth.get(player.id));
         room.startGame();
